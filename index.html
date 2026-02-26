@@ -3,16 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 應用規劃師題庫 - Word 辨識版</title>
+    <title>AI 題庫 Pro - 雲端同步版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- 引入 mammoth.js 用於解析 Word (.docx) 檔案 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    
+    <!-- 引入 Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
         body { font-family: 'Noto Sans TC', sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .tab-active { @apply bg-blue-600 text-white shadow-lg; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
@@ -21,10 +27,10 @@
         <!-- 側邊欄 -->
         <aside class="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col md:h-screen sticky top-0 z-20">
             <div class="p-6 flex items-center gap-3">
-                <div class="bg-blue-600 p-2 rounded-lg shadow-lg">
-                    <i data-lucide="book-open"></i>
+                <div class="bg-blue-600 p-2 rounded-lg">
+                    <i data-lucide="cloud-lightning"></i>
                 </div>
-                <h1 class="text-xl font-bold tracking-tighter">本地題庫 Pro</h1>
+                <h1 class="text-xl font-bold tracking-tighter">雲端題庫 Pro</h1>
             </div>
             
             <nav class="flex-1 px-4 py-2 space-y-1 flex flex-col">
@@ -36,21 +42,30 @@
                 </button>
                 
                 <div class="pt-6 mt-4 border-t border-slate-800">
-                    <button onclick="toggleImportModal(true)" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-emerald-400 hover:bg-emerald-500/10 transition-colors border border-emerald-500/20">
-                        <i data-lucide="file-text"></i> <span class="font-bold">Word 批量匯入</span>
+                    <button onclick="toggleImportModal(true)" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20">
+                        <i data-lucide="file-digit"></i> <span class="font-bold">Word 批量匯入</span>
                     </button>
                 </div>
             </nav>
             
-            <div class="p-4 m-4 bg-slate-800/50 rounded-xl space-y-2 text-center">
-                <button onclick="exportData()" class="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-300 hover:text-white bg-slate-700 rounded-lg transition-colors">
-                    <i data-lucide="download" class="w-3 h-3"></i> 備份 JSON
+            <!-- 雲端狀態與設定 -->
+            <div class="p-4 m-4 bg-slate-800/50 rounded-xl space-y-2">
+                <div class="flex items-center justify-between px-2 mb-2">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase">Cloud Status</span>
+                    <span id="cloud-indicator" class="w-2 h-2 rounded-full bg-slate-600 shadow-[0_0_8px_rgba(71,85,105,0.5)]"></span>
+                </div>
+                <button onclick="toggleCloudConfig(true)" class="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-blue-400 hover:text-white bg-blue-500/10 rounded-lg transition-colors border border-blue-500/20">
+                    <i data-lucide="settings" class="w-3 h-3"></i> 雲端同步設定
                 </button>
-                <button onclick="document.getElementById('importFile').click()" class="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-300 hover:text-white bg-slate-700 rounded-lg transition-colors">
-                    <i data-lucide="upload" class="w-3 h-3"></i> 匯入備份
-                </button>
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    <button onclick="exportData()" class="flex items-center justify-center gap-1 py-2 text-[10px] font-bold text-slate-400 hover:text-white bg-slate-700 rounded-lg">
+                        <i data-lucide="download" class="w-2 h-2"></i> 匯出
+                    </button>
+                    <button onclick="document.getElementById('importFile').click()" class="flex items-center justify-center gap-1 py-2 text-[10px] font-bold text-slate-400 hover:text-white bg-slate-700 rounded-lg">
+                        <i data-lucide="upload" class="w-2 h-2"></i> 匯入
+                    </button>
+                </div>
                 <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
-                <p class="text-[10px] text-slate-500 pt-2 leading-tight">資料存於瀏覽器 localStorage</p>
             </div>
         </aside>
 
@@ -59,9 +74,9 @@
             <header class="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm z-10">
                 <div class="relative max-w-md w-full">
                     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
-                    <input type="text" id="searchInput" oninput="renderList()" placeholder="搜尋題目、解析或分類..." class="w-full pl-10 pr-4 py-2.5 bg-slate-100 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all border-none">
+                    <input type="text" id="searchInput" oninput="renderList()" placeholder="搜尋題目、解析或分類..." class="w-full pl-10 pr-4 py-2.5 bg-slate-100 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-500 border-none transition-all">
                 </div>
-                <button onclick="toggleEditModal(true)" class="ml-4 bg-blue-600 text-white px-6 py-2.5 rounded-full flex items-center gap-2 text-sm font-bold shadow-lg shadow-blue-200 active:scale-95 transition-all">
+                <button onclick="toggleEditModal(true)" class="ml-4 bg-blue-600 text-white px-6 py-2.5 rounded-full flex items-center gap-2 text-sm font-bold shadow-lg shadow-blue-200 hover:scale-105 transition-all">
                     <i data-lucide="plus" class="w-4 h-4"></i> <span>新增題目</span>
                 </button>
             </header>
@@ -72,128 +87,156 @@
         </main>
     </div>
 
-    <!-- 批量匯入 Modal -->
+    <!-- 雲端設定 Modal -->
+    <div id="cloud-modal" class="fixed inset-0 z-[60] bg-slate-900/90 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-[2rem] shadow-2xl p-8 space-y-6">
+            <div class="flex justify-between items-center">
+                <h3 class="text-xl font-black text-slate-800">免費雲端同步設定</h3>
+                <button onclick="toggleCloudConfig(false)"><i data-lucide="x"></i></button>
+            </div>
+            <p class="text-xs text-slate-500 leading-relaxed bg-blue-50 p-4 rounded-xl border border-blue-100">
+                💡 <b>提示：</b> 前往 Firebase Console 建立專案並選擇「Spark (免費)」方案，啟用匿名登入與 Firestore 後，將 SDK 設定貼在下方。
+            </p>
+            <div class="space-y-4">
+                <textarea id="cloud-config-json" rows="8" class="w-full px-4 py-3 rounded-xl border-2 border-slate-100 text-xs font-mono" placeholder='貼上你的 Firebase Config JSON...'></textarea>
+                <button onclick="saveCloudConfig()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black shadow-lg">儲存並嘗試連線</button>
+                <button onclick="clearCloudConfig()" class="w-full text-red-500 text-xs font-bold py-2">清除設定回歸本地模式</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量匯入 Modal (支援 Word) -->
     <div id="import-modal" class="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md hidden items-center justify-center p-4">
         <div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             <div class="p-8 border-b flex justify-between items-center bg-slate-50">
                 <div>
-                    <h3 class="text-2xl font-black text-slate-800 tracking-tight">批量解析匯入</h3>
-                    <p class="text-slate-400 text-sm font-medium">支援上傳 Word (.docx) 檔案自動提取文字</p>
+                    <h3 class="text-2xl font-black text-slate-800">Word 批量匯入</h3>
+                    <p class="text-slate-400 text-sm">上傳 .docx 檔案自動解析題目</p>
                 </div>
-                <button onclick="toggleImportModal(false)" class="p-3 hover:bg-slate-100 rounded-full transition-colors"><i data-lucide="x"></i></button>
+                <button onclick="toggleImportModal(false)" class="p-3 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
             </div>
             <div class="p-8 space-y-6 overflow-y-auto no-scrollbar">
-                <!-- Word 上傳區 -->
                 <div class="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all cursor-pointer group" onclick="document.getElementById('word-upload').click()">
                     <i data-lucide="file-digit" class="w-12 h-12 text-blue-500 mb-3 group-hover:scale-110 transition-transform"></i>
-                    <p class="text-sm font-black text-slate-600" id="word-status">點擊上傳題庫 Word 檔案 (.docx)</p>
+                    <p class="text-sm font-black text-slate-600" id="word-status">點擊上傳 Word 檔案 (.docx)</p>
                     <input type="file" id="word-upload" class="hidden" accept=".docx" onchange="handleWordFile(event)">
                 </div>
-
-                <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-2">設定匯入分類</label>
-                    <input type="text" id="i-category" placeholder="例如：114年AI應用規劃師" class="w-full px-5 py-3 rounded-2xl border-2 border-slate-100 outline-none focus:border-emerald-500 font-bold transition-all">
-                </div>
-                
-                <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-2">文字預覽 (解析前可微調內容)</label>
-                    <textarea id="i-text" rows="8" class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 outline-none focus:border-emerald-500 text-sm font-medium leading-relaxed" placeholder="1. 題目內容...&#10;答：A"></textarea>
-                </div>
-                
-                <button onclick="processBatchImport()" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xl hover:bg-emerald-700 shadow-xl transition-all active:scale-95">
-                    確認並解析匯入題庫
-                </button>
+                <input type="text" id="i-category" placeholder="設定分類 (如：114年AI規劃師)" class="w-full px-5 py-3 rounded-2xl border-2 border-slate-100 outline-none focus:border-emerald-500 font-bold">
+                <textarea id="i-text" rows="6" class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 outline-none focus:border-emerald-500 text-sm font-medium leading-relaxed" placeholder="1. 題目內容...&#10;答：A"></textarea>
+                <button onclick="processBatchImport()" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xl hover:bg-emerald-700 shadow-xl transition-all">解析並同步</button>
             </div>
         </div>
     </div>
 
     <!-- 編輯 Modal -->
     <div id="edit-modal" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center p-4">
-        <div class="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl p-8 space-y-6 animate-in zoom-in duration-200">
+        <div class="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl p-8 space-y-6">
             <div class="flex justify-between items-center">
-                <h3 id="modal-title" class="text-2xl font-black text-slate-800 tracking-tight">編輯題目</h3>
-                <button onclick="toggleEditModal(false)" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i data-lucide="x"></i></button>
+                <h3 id="modal-title" class="text-2xl font-black text-slate-800">編輯題目</h3>
+                <button onclick="toggleEditModal(false)" class="p-2 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
             </div>
             <div class="space-y-4">
-                <textarea id="f-question" rows="4" class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 outline-none focus:border-blue-500 font-bold text-slate-700" placeholder="請輸入題目內容..."></textarea>
+                <textarea id="f-question" rows="4" class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 outline-none focus:border-blue-500 font-bold" placeholder="題目內容..."></textarea>
                 <div class="grid grid-cols-2 gap-4">
                     <input type="text" id="f-category" class="w-full px-5 py-3 rounded-2xl border-2 border-slate-100 outline-none" placeholder="分類">
                     <select id="f-difficulty" class="w-full px-5 py-3 rounded-2xl border-2 border-slate-100 outline-none bg-white font-bold">
                         <option value="低">簡單</option><option value="中" selected>普通</option><option value="高">困難</option>
                     </select>
                 </div>
-                <input type="text" id="f-answer" class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 outline-none font-black text-blue-600 text-lg" placeholder="答案 (如: A 或 B)">
-                <textarea id="f-explanation" rows="2" class="w-full px-5 py-3 rounded-2xl border-2 border-slate-100 outline-none text-sm text-slate-500" placeholder="解析說明 (選填)..."></textarea>
+                <input type="text" id="f-answer" class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 outline-none font-black text-blue-600 text-lg" placeholder="答案 (A/B/C/D)">
+                <textarea id="f-explanation" rows="2" class="w-full px-5 py-3 rounded-2xl border-2 border-slate-100 outline-none text-sm" placeholder="解析說明..."></textarea>
             </div>
-            <button onclick="saveQuestion()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xl shadow-xl hover:bg-blue-600 transition-all active:scale-95">儲存題目資訊</button>
+            <button onclick="saveQuestion()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xl shadow-xl hover:bg-blue-600">儲存</button>
         </div>
     </div>
 
     <script>
+        // --- 變數與初始化 ---
         let questions = JSON.parse(localStorage.getItem('local_bank_v2')) || [];
+        let db = null;
+        let isCloudMode = false;
         let currentView = 'list';
         let editingId = null;
         let quizList = [];
         let currentQuizIndex = 0;
         let showQuizAns = false;
 
-        function saveToLocal() { localStorage.setItem('local_bank_v2', JSON.stringify(questions)); }
+        // --- 雲端邏輯 ---
+        function initCloud() {
+            const config = localStorage.getItem('firebase_config_v2');
+            if (config) {
+                try {
+                    const parsedConfig = JSON.parse(config);
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(parsedConfig);
+                    }
+                    db = firebase.firestore();
+                    isCloudMode = true;
+                    document.getElementById('cloud-indicator').className = "w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]";
+                    
+                    // 雲端同步監聽
+                    db.collection('questions').orderBy('updatedAt', 'desc').onSnapshot(snapshot => {
+                        const cloudDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        if (cloudDocs.length > 0) {
+                            questions = cloudDocs;
+                            localStorage.setItem('local_bank_v2', JSON.stringify(questions));
+                            render();
+                        }
+                    });
 
-        // --- Word 解析處理 ---
-        async function handleWordFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const statusEl = document.getElementById('word-status');
-            const textArea = document.getElementById('i-text');
-            statusEl.innerText = "Word 檔案解析中...";
-            
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                // 使用 mammoth 轉成純文字
-                const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
-                textArea.value = result.value;
-                statusEl.innerText = "解析完成！請檢查下方文字並匯入。";
-            } catch (e) {
-                statusEl.innerText = "解析失敗，請確認檔案是否為 .docx";
-                console.error(e);
+                    // 匿名登入
+                    firebase.auth().signInAnonymously().catch(e => console.error("Auth Error", e));
+                } catch (e) {
+                    console.error("Cloud Init Failed", e);
+                    isCloudMode = false;
+                }
             }
         }
 
+        async function syncToCloud(data, isDelete = false) {
+            if (!isCloudMode || !db) return;
+            try {
+                if (isDelete) {
+                    await db.collection('questions').doc(String(data.id)).delete();
+                } else {
+                    await db.collection('questions').doc(String(data.id)).set(data);
+                }
+            } catch (e) {
+                console.error("Cloud Sync Error", e);
+            }
+        }
+
+        // --- 視圖與渲染 ---
         function setView(view) {
             currentView = view;
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.classList.remove('bg-blue-600', 'shadow-lg', 'text-white');
                 btn.classList.add('text-slate-400', 'hover:bg-slate-800');
             });
-            const activeBtn = document.getElementById(`btn-${view}`);
-            activeBtn.classList.remove('text-slate-400', 'hover:bg-slate-800');
-            activeBtn.classList.add('bg-blue-600', 'shadow-lg', 'text-white');
+            document.getElementById(`btn-${view}`).classList.add('bg-blue-600', 'shadow-lg', 'text-white');
             render();
         }
 
         function renderList() {
             const container = document.getElementById('content-area');
             const search = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = questions.filter(q => q.question.toLowerCase().includes(search) || q.category.toLowerCase().includes(search)).sort((a,b)=>b.updatedAt-a.updatedAt);
+            const filtered = questions.filter(q => q.question.toLowerCase().includes(search) || q.category.toLowerCase().includes(search));
             
-            if(filtered.length === 0) {
-                container.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-slate-300"><i data-lucide="file-text" class="mx-auto w-16 h-16 mb-4"></i><p class="font-bold">題庫目前是空的</p></div>`;
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-slate-300"><i data-lucide="cloud-off" class="w-16 h-16 mb-4"></i><p>尚無題庫，請匯入 Word 或手動新增</p></div>`;
             } else {
-                container.innerHTML = `<div class="max-w-4xl mx-auto space-y-4"><h2 class="text-2xl font-black mb-4 tracking-tight">題庫清單 (${filtered.length})</h2><div class="grid gap-4">${filtered.map(q => `
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 group relative hover:shadow-lg transition-all">
-                        <div class="flex justify-between items-start mb-2">
+                container.innerHTML = `<div class="max-w-4xl mx-auto space-y-4"><h2 class="text-2xl font-black mb-4">題庫清單 (${filtered.length})</h2><div class="grid gap-4">${filtered.map(q => `
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 group hover:shadow-lg transition-all">
+                        <div class="flex justify-between mb-2">
                             <span class="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded uppercase">${q.category}</span>
                             <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                <button onclick="editQuestion(${q.id})" class="p-2 hover:text-blue-600 transition-colors"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                                <button onclick="deleteQuestion(${q.id})" class="p-2 hover:text-red-600 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                <button onclick="editQuestion('${q.id}')" class="p-2 hover:text-blue-600"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                                <button onclick="deleteQuestion('${q.id}')" class="p-2 hover:text-red-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                             </div>
                         </div>
                         <p class="text-lg font-bold text-slate-800 mb-4 whitespace-pre-wrap">${q.question}</p>
-                        <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="text-sm font-black text-blue-600 hover:underline">顯示解答與解析</button>
-                        <div class="hidden mt-4 p-5 bg-slate-50 rounded-2xl border border-slate-100 animate-in fade-in slide-in-from-top-1">
-                            <div class="font-black text-emerald-600 text-lg">答案：${q.answer}</div>
-                            ${q.explanation ? `<div class="text-slate-500 text-sm mt-3 border-l-4 pl-4 italic leading-relaxed">${q.explanation}</div>`:''}
-                        </div>
+                        <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="text-sm font-black text-blue-600">解答與解析</button>
+                        <div class="hidden mt-4 p-5 bg-slate-50 rounded-2xl border font-black text-emerald-600">答案：${q.answer}${q.explanation ? `<div class="text-slate-500 text-sm font-normal mt-2 border-l-2 pl-4 italic">${q.explanation}</div>`:''}</div>
                     </div>
                 `).join('')}</div></div>`;
             }
@@ -203,19 +246,19 @@
         function renderQuiz() {
             const container = document.getElementById('content-area');
             const q = quizList[currentQuizIndex];
-            container.innerHTML = `<div class="max-w-2xl mx-auto py-10 animate-in fade-in zoom-in"><div class="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border">
+            container.innerHTML = `<div class="max-w-2xl mx-auto py-10 animate-in fade-in zoom-in"><div class="bg-white rounded-[2.5rem] shadow-2xl border">
                 <div class="bg-slate-900 p-8 text-white flex justify-between items-center">
-                    <div><h3 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-1">Practice Mode</h3><p class="font-bold tracking-tight">隨機測驗</p></div>
-                    <span class="bg-blue-600 px-5 py-2 rounded-2xl text-xs font-black">第 ${currentQuizIndex+1} / ${quizList.length} 題</span>
+                    <div><h3 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-1">Testing Mode</h3><p class="font-bold">隨機測驗</p></div>
+                    <span>${currentQuizIndex+1}/${quizList.length}</span>
                 </div>
                 <div class="p-12 text-center min-h-[350px] flex flex-col justify-center items-center">
-                    <h2 class="text-2xl font-black mb-12 text-slate-800 leading-tight whitespace-pre-wrap">${q.question}</h2>
-                    ${showQuizAns ? `<div class="w-full bg-blue-50 p-8 rounded-[2rem] animate-in zoom-in border border-blue-100 shadow-inner"><p class="text-blue-600 font-black text-xs uppercase mb-3 tracking-widest">正確答案</p><p class="text-4xl font-black text-slate-900 mb-6">${q.answer}</p><p class="text-slate-500 text-sm leading-relaxed">${q.explanation || '本題無詳細解析。'}</p></div>` : 
-                    `<button onclick="showQuizAns=true;renderQuiz()" class="bg-slate-900 text-white px-12 py-5 rounded-full font-black text-lg shadow-2xl hover:bg-blue-600 transition-all active:scale-95">揭曉標準答案</button>`}
+                    <h2 class="text-2xl font-black mb-12 text-slate-800 leading-tight">${q.question}</h2>
+                    ${showQuizAns ? `<div class="w-full bg-blue-50 p-8 rounded-[2rem] border animate-in zoom-in"><p class="text-4xl font-black text-slate-900 mb-4">${q.answer}</p><p class="text-slate-500 text-sm italic">${q.explanation || '無解析'}</p></div>` : 
+                    `<button onclick="showQuizAns=true;renderQuiz()" class="bg-slate-900 text-white px-12 py-5 rounded-full font-black text-lg">顯示答案</button>`}
                 </div>
                 <div class="p-8 bg-slate-50 flex gap-4">
-                    <button onclick="setView('list')" class="flex-1 font-black text-slate-400 uppercase text-xs tracking-widest">Quit</button>
-                    <button ${currentQuizIndex === quizList.length-1 ? 'disabled' : ''} onclick="currentQuizIndex++;showQuizAns=false;renderQuiz()" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg disabled:opacity-30 transition-all hover:bg-blue-700">下一題</button>
+                    <button onclick="setView('list')" class="flex-1 font-black text-slate-400">結束</button>
+                    <button ${currentQuizIndex === quizList.length-1 ? 'disabled' : ''} onclick="currentQuizIndex++;showQuizAns=false;renderQuiz()" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black disabled:opacity-30">下一題</button>
                 </div>
             </div></div>`;
             lucide.createIcons();
@@ -223,87 +266,125 @@
 
         function render() { currentView === 'list' ? renderList() : renderQuiz(); }
 
-        function startQuiz() { if(questions.length===0) return alert('題庫為空，請先匯入資料。'); quizList = [...questions].sort(()=>0.5-Math.random()).slice(0,10); currentQuizIndex=0; showQuizAns=false; setView('quiz'); }
-
-        function toggleEditModal(s) { document.getElementById('edit-modal').style.display = s?'flex':'none'; if(!s) { editingId=null; ['f-question','f-answer','f-explanation','f-category'].forEach(id=>document.getElementById(id).value=''); } }
-        function toggleImportModal(s) { document.getElementById('import-modal').style.display = s?'flex':'none'; if(!s) { document.getElementById('word-status').innerText="點擊上傳題庫 Word 檔案 (.docx)"; } }
-
-        function saveQuestion() {
-            const data = { id: editingId||Date.now(), question: document.getElementById('f-question').value, answer: document.getElementById('f-answer').value, explanation: document.getElementById('f-explanation').value, category: document.getElementById('f-category').value||'一般', difficulty: document.getElementById('f-difficulty').value, updatedAt: Date.now() };
-            if(!data.question || !data.answer) return alert('題目與答案必填！');
-            if(editingId) questions = questions.map(q=>q.id===editingId?data:q);
-            else questions.push({...data, createdAt: Date.now()});
-            saveToLocal(); toggleEditModal(false); render();
+        // --- 功能與彈窗 ---
+        function toggleCloudConfig(s) { document.getElementById('cloud-modal').style.display = s?'flex':'none'; }
+        function saveCloudConfig() {
+            const val = document.getElementById('cloud-config-json').value;
+            localStorage.setItem('firebase_config_v2', val);
+            location.reload();
+        }
+        function clearCloudConfig() {
+            localStorage.removeItem('firebase_config_v2');
+            location.reload();
         }
 
-        function editQuestion(id) { const q = questions.find(q=>q.id===id); editingId=id; document.getElementById('f-question').value=q.question; document.getElementById('f-answer').value=q.answer; document.getElementById('f-explanation').value=q.explanation; document.getElementById('f-category').value=q.category; toggleEditModal(true); }
-        function deleteQuestion(id) { if(confirm('確定刪除此題目？')) { questions=questions.filter(q=>q.id!==id); saveToLocal(); render(); } }
+        function toggleEditModal(s) { document.getElementById('edit-modal').style.display = s?'flex':'none'; if(!s) { editingId=null; ['f-question','f-answer','f-explanation','f-category'].forEach(id=>document.getElementById(id).value=''); } }
+        function toggleImportModal(s) { document.getElementById('import-modal').style.display = s?'flex':'none'; }
 
-        function processBatchImport() {
-            const text = document.getElementById('i-text').value;
-            const cat = document.getElementById('i-category').value || 'Word匯入';
-            
-            // 針對 Word 解析出的格式進行強大拆分
-            // 規則 1: 偵測題號 (數字 + . 或 、)
-            // 規則 2: 偵測單獨的 A, B, C, D 答案或「答：A」
-            const cleanText = text.replace(/["\r]/g, "");
-            const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l);
-            
-            let tempQuestions = [];
-            let currentQ = null;
-            let currentAns = null;
-
-            lines.forEach(line => {
-                // 檢查是否為答案行 (例如 "A" 或 "B" 或 "答：A")
-                const ansMatch = line.match(/^(答[：:])?\s*([A-D])$/i);
-                
-                // 檢查是否為題號行 (例如 "1." 或 "47.")
-                const numMatch = line.match(/^(\d+)[\.、\s]/);
-
-                if (numMatch) {
-                    // 如果發現新題目，先把上一題存起來
-                    if (currentQ && currentAns) {
-                        tempQuestions.push({ ...currentQ, answer: currentAns });
-                        currentAns = null;
-                    }
-                    currentQ = {
-                        id: Date.now() + Math.random(),
-                        question: line.replace(/^(\d+)[\.、\s]*/, "").trim(),
-                        category: cat,
-                        updatedAt: Date.now(),
-                        createdAt: Date.now()
-                    };
-                } else if (ansMatch) {
-                    currentAns = ansMatch[2].toUpperCase();
-                } else if (currentQ) {
-                    // 既不是題號也不是答案，可能是題目換行或解析
-                    if (line.match(/^(解析|說明)[：:]/)) {
-                        currentQ.explanation = line.replace(/^(解析|說明)[：:]/, "").trim();
-                    } else if (!currentAns) {
-                        currentQ.question += " " + line;
-                    }
-                }
-            });
-
-            // 最後一題
-            if (currentQ && currentAns) {
-                tempQuestions.push({ ...currentQ, answer: currentAns });
+        async function handleWordFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            document.getElementById('word-status').innerText = "Word 檔案解析中...";
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                document.getElementById('i-text').value = result.value;
+                document.getElementById('word-status').innerText = "解析完成！";
+            } catch (e) {
+                alert("解析失敗");
             }
+        }
 
-            if (tempQuestions.length === 0) {
-                alert("無法偵測到題目。請確保內容中有題號 (如 1.) 與答案字母 (如 A)。");
+        function saveQuestion() {
+            const qText = document.getElementById('f-question').value;
+            const ansText = document.getElementById('f-answer').value;
+            if (!qText || !ansText) return alert("必填！");
+
+            const data = {
+                id: editingId || String(Date.now()),
+                question: qText,
+                answer: ansText,
+                explanation: document.getElementById('f-explanation').value,
+                category: document.getElementById('f-category').value || '一般',
+                updatedAt: Date.now()
+            };
+
+            if (editingId) {
+                questions = questions.map(q => q.id === editingId ? data : q);
             } else {
-                questions = [...questions, ...tempQuestions];
-                saveToLocal();
-                alert(`成功從 Word 匯入 ${tempQuestions.length} 題！`);
-                toggleImportModal(false);
+                questions.unshift(data);
+            }
+            
+            localStorage.setItem('local_bank_v2', JSON.stringify(questions));
+            syncToCloud(data);
+            toggleEditModal(false);
+            render();
+        }
+
+        function editQuestion(id) {
+            const q = questions.find(q => String(q.id) === String(id));
+            editingId = q.id;
+            document.getElementById('f-question').value = q.question;
+            document.getElementById('f-answer').value = q.answer;
+            document.getElementById('f-explanation').value = q.explanation;
+            document.getElementById('f-category').value = q.category;
+            toggleEditModal(true);
+        }
+
+        async function deleteQuestion(id) {
+            if (confirm("刪除？")) {
+                const qToDelete = questions.find(q => String(q.id) === String(id));
+                questions = questions.filter(q => String(q.id) !== String(id));
+                localStorage.setItem('local_bank_v2', JSON.stringify(questions));
+                if (qToDelete) syncToCloud(qToDelete, true);
                 render();
             }
         }
 
-        function exportData() { const b=new Blob([JSON.stringify(questions,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=`題庫備份.json`; a.click(); }
-        function importData(e) { const r=new FileReader(); r.onload=(e)=>{ const d=JSON.parse(e.target.result); if(confirm(`匯入 ${d.length} 題？`)) { questions=d; saveToLocal(); render(); } }; r.readAsText(e.target.files[0]); }
-        window.onload = () => { lucide.createIcons(); render(); };
+        function processBatchImport() {
+            const text = document.getElementById('i-text').value;
+            const cat = document.getElementById('i-category').value || 'Word匯入';
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+            let tempQ = null;
+            let tempAns = null;
+            let count = 0;
+
+            lines.forEach(line => {
+                const ansMatch = line.match(/^(答[：:])?\s*([A-D])$/i);
+                const numMatch = line.match(/^(\d+)[\.、\s]/);
+
+                if (numMatch) {
+                    if (tempQ && tempAns) {
+                        questions.unshift({ ...tempQ, answer: tempAns });
+                        syncToCloud({ ...tempQ, answer: tempAns });
+                        count++;
+                    }
+                    tempQ = { id: String(Date.now() + Math.random()), question: line.replace(/^(\d+)[\.、\s]*/, "").trim(), category: cat, updatedAt: Date.now() };
+                    tempAns = null;
+                } else if (ansMatch) {
+                    tempAns = ansMatch[2].toUpperCase();
+                } else if (tempQ) {
+                    tempQ.question += " " + line;
+                }
+            });
+
+            if (tempQ && tempAns) {
+                questions.unshift({ ...tempQ, answer: tempAns });
+                syncToCloud({ ...tempQ, answer: tempAns });
+                count++;
+            }
+            
+            localStorage.setItem('local_bank_v2', JSON.stringify(questions));
+            alert(`成功匯入 ${count} 題！`);
+            toggleImportModal(false);
+            render();
+        }
+
+        function startQuiz() { if(questions.length===0) return alert('題庫為空'); quizList = [...questions].sort(()=>0.5-Math.random()).slice(0,10); currentQuizIndex=0; showQuizAns=false; setView('quiz'); }
+        function exportData() { const b=new Blob([JSON.stringify(questions,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`備份.json`; a.click(); }
+        function importData(e) { const r=new FileReader(); r.onload=(e)=>{ questions=JSON.parse(e.target.result); localStorage.setItem('local_bank_v2', JSON.stringify(questions)); render(); }; r.readAsText(e.target.files[0]); }
+
+        window.onload = () => { initCloud(); lucide.createIcons(); render(); };
     </script>
 </body>
 </html>
