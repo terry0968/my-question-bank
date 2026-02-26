@@ -3,16 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的雲端題庫 Pro - 免費本地版</title>
-    <!-- 使用 Tailwind CSS 進行快速美化 -->
+    <title>AI 應用規劃師題庫 - 本地版</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 Lucide 圖標庫 -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
         body { font-family: 'Noto Sans TC', sans-serif; }
-        .modal-active { overflow: hidden; }
-        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
@@ -24,7 +20,7 @@
                 <div class="bg-indigo-600 p-2 rounded-lg shadow-lg">
                     <i data-lucide="book-open"></i>
                 </div>
-                <h1 class="text-xl font-black tracking-tighter">本地題庫 Pro</h1>
+                <h1 class="text-xl font-bold tracking-tighter">AI 題庫系統</h1>
             </div>
             
             <nav class="flex-1 px-4 py-2 space-y-1 flex flex-col">
@@ -44,13 +40,12 @@
             
             <div class="p-4 m-4 bg-slate-800/50 rounded-xl space-y-2 text-center">
                 <button onclick="exportData()" class="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-300 hover:text-white bg-slate-700 rounded-lg transition-colors">
-                    <i data-lucide="download" class="w-3 h-3"></i> 備份題庫 (JSON)
+                    <i data-lucide="download" class="w-3 h-3"></i> 備份 JSON
                 </button>
                 <button onclick="document.getElementById('importFile').click()" class="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-300 hover:text-white bg-slate-700 rounded-lg transition-colors">
                     <i data-lucide="upload" class="w-3 h-3"></i> 匯入備份
                 </button>
                 <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
-                <p class="text-[10px] text-slate-500 pt-2 leading-tight">資料存於瀏覽器，更換設備請先備份</p>
             </div>
         </aside>
 
@@ -59,65 +54,55 @@
             <header class="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm z-10">
                 <div class="relative max-w-md w-full">
                     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
-                    <input type="text" id="searchInput" oninput="renderList()" placeholder="搜尋關鍵字或分類..." class="w-full pl-10 pr-4 py-2.5 bg-slate-100 rounded-full text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all border-none">
+                    <input type="text" id="searchInput" oninput="renderList()" placeholder="搜尋題目或分類..." class="w-full pl-10 pr-4 py-2 bg-slate-100 rounded-full text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all border-none">
                 </div>
-                <button onclick="toggleEditModal(true)" class="ml-4 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-full flex items-center gap-2 text-sm font-black shadow-lg shadow-indigo-200 active:scale-95 transition-all">
-                    <i data-lucide="plus" class="w-4 h-4"></i> <span>手動新增</span>
+                <button onclick="toggleEditModal(true)" class="ml-4 bg-indigo-600 text-white px-6 py-2 rounded-full flex items-center gap-2 text-sm font-bold shadow-lg shadow-indigo-200">
+                    <i data-lucide="plus" class="w-4 h-4"></i> <span>新增</span>
                 </button>
             </header>
 
-            <div id="content-area" class="flex-1 overflow-y-auto p-4 md:p-8">
-                <!-- 內容會由 JS 動態生成 -->
-            </div>
+            <div id="content-area" class="flex-1 overflow-y-auto p-4 md:p-8"></div>
         </main>
-    </div>
-
-    <!-- 手動新增/編輯 Modal -->
-    <div id="edit-modal" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center p-4">
-        <div class="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl p-8 space-y-6">
-            <div class="flex justify-between items-center">
-                <h3 id="modal-title" class="text-2xl font-black text-slate-800">建立題目</h3>
-                <button onclick="toggleEditModal(false)" class="p-2 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
-            </div>
-            <div class="space-y-4">
-                <textarea id="f-question" rows="3" class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 outline-none focus:border-indigo-500 font-bold" placeholder="題目敘述..."></textarea>
-                <div class="grid grid-cols-2 gap-4">
-                    <input type="text" id="f-category" class="w-full px-5 py-3 rounded-2xl border-2 border-slate-100 outline-none" placeholder="分類">
-                    <select id="f-difficulty" class="w-full px-5 py-3 rounded-2xl border-2 border-slate-100 outline-none bg-white font-bold">
-                        <option value="低">簡單</option><option value="中" selected>普通</option><option value="高">困難</option>
-                    </select>
-                </div>
-                <input type="text" id="f-answer" class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 outline-none font-black text-indigo-600 text-lg" placeholder="正確答案">
-                <textarea id="f-explanation" rows="2" class="w-full px-5 py-3 rounded-2xl border-2 border-slate-100 outline-none text-sm" placeholder="解析說明..."></textarea>
-            </div>
-            <button onclick="saveQuestion()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xl shadow-xl hover:bg-indigo-600 transition-all">儲存題目</button>
-        </div>
     </div>
 
     <!-- 批量匯入 Modal -->
     <div id="import-modal" class="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md hidden items-center justify-center p-4">
-        <div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+        <div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh]">
             <div class="p-8 border-b flex justify-between items-center bg-slate-50">
-                <div>
-                    <h3 class="text-2xl font-black text-slate-800">AI 批量解析匯入</h3>
-                    <p class="text-slate-400 text-sm">貼上從 PDF 複製的文字，系統會自動分割題目</p>
-                </div>
-                <button onclick="toggleImportModal(false)" class="p-3 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
+                <h3 class="text-2xl font-black">AI 批量解析匯入</h3>
+                <button onclick="toggleImportModal(false)" class="p-2 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
             </div>
-            <div class="p-8 space-y-6 overflow-y-auto">
-                <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl flex gap-3 text-indigo-700 text-xs">
-                    <i data-lucide="alert-circle" class="shrink-0"></i>
-                    <p>格式：每題請用數字開頭（如 1.），答案標註「答：」或「Ans:」。</p>
-                </div>
-                <input type="text" id="i-category" placeholder="設定這批題目的分類" class="w-full px-5 py-3 rounded-2xl border-2 border-slate-100 outline-none focus:border-emerald-500 font-bold">
-                <textarea id="i-text" rows="10" class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 outline-none focus:border-emerald-500 text-sm font-medium" placeholder="範例：&#10;1. 世界上最高的山？&#10;答：聖母峰。&#10;解析：又名珠穆朗瑪峰。"></textarea>
-                <button onclick="processBatchImport()" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xl hover:bg-emerald-700 shadow-xl transition-all">開始解析並匯入</button>
+            <div class="p-8 space-y-4 overflow-y-auto">
+                <input type="text" id="i-category" placeholder="設定分類（如：AI應用規劃師）" class="w-full px-5 py-3 rounded-xl border-2 border-slate-100 font-bold outline-none focus:border-emerald-500">
+                <textarea id="i-text" rows="12" class="w-full px-5 py-4 rounded-xl border-2 border-slate-100 text-sm font-medium outline-none focus:border-emerald-500" placeholder="請貼上題目內容..."></textarea>
+                <button onclick="processBatchImport()" class="w-full bg-emerald-600 text-white py-4 rounded-xl font-black text-lg shadow-xl hover:bg-emerald-700 transition-all">確認匯入</button>
             </div>
         </div>
     </div>
 
+    <!-- 編輯 Modal -->
+    <div id="edit-modal" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl p-8 space-y-6">
+            <div class="flex justify-between items-center">
+                <h3 id="modal-title" class="text-2xl font-black">編輯題目</h3>
+                <button onclick="toggleEditModal(false)" class="p-2 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <div class="space-y-4">
+                <textarea id="f-question" rows="3" class="w-full px-4 py-3 rounded-xl border-2 border-slate-100 outline-none focus:border-indigo-500 font-bold" placeholder="題目內容..."></textarea>
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="text" id="f-category" class="w-full px-4 py-2 rounded-xl border-2 border-slate-100 outline-none" placeholder="分類">
+                    <select id="f-difficulty" class="w-full px-4 py-2 rounded-xl border-2 border-slate-100 outline-none">
+                        <option value="低">簡單</option><option value="中" selected>普通</option><option value="高">困難</option>
+                    </select>
+                </div>
+                <input type="text" id="f-answer" class="w-full px-4 py-3 rounded-xl border-2 border-slate-100 text-indigo-600 font-black" placeholder="答案">
+                <textarea id="f-explanation" rows="2" class="w-full px-4 py-2 rounded-xl border-2 border-slate-100 text-sm" placeholder="解析..."></textarea>
+            </div>
+            <button onclick="saveQuestion()" class="w-full bg-slate-900 text-white py-4 rounded-xl font-black">儲存</button>
+        </div>
+    </div>
+
     <script>
-        // --- 資料處理核心 ---
         let questions = JSON.parse(localStorage.getItem('local_bank_v2')) || [];
         let currentView = 'list';
         let editingId = null;
@@ -125,249 +110,111 @@
         let currentQuizIndex = 0;
         let showQuizAns = false;
 
-        function saveToLocal() {
-            localStorage.setItem('local_bank_v2', JSON.stringify(questions));
-        }
+        function saveToLocal() { localStorage.setItem('local_bank_v2', JSON.stringify(questions)); }
 
-        // --- 視圖控制 ---
         function setView(view) {
             currentView = view;
-            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('bg-indigo-600', 'shadow-lg', 'text-white'));
-            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.add('text-slate-400', 'hover:bg-slate-800'));
-            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'shadow-lg', 'text-white');
+                btn.classList.add('text-slate-400', 'hover:bg-slate-800');
+            });
             const activeBtn = document.getElementById(`btn-${view}`);
             activeBtn.classList.remove('text-slate-400', 'hover:bg-slate-800');
             activeBtn.classList.add('bg-indigo-600', 'shadow-lg', 'text-white');
-            
             render();
         }
 
-        // --- 列表渲染 ---
         function renderList() {
             const container = document.getElementById('content-area');
             const search = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = questions.filter(q => q.question.toLowerCase().includes(search) || q.category.toLowerCase().includes(search)).sort((a,b)=>b.updatedAt-a.updatedAt);
             
-            const filtered = questions.filter(q => 
-                q.question.toLowerCase().includes(search) || 
-                q.category.toLowerCase().includes(search)
-            ).sort((a, b) => b.updatedAt - a.updatedAt);
-
-            if (filtered.length === 0) {
-                container.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-64 text-slate-300">
-                        <i data-lucide="file-text" class="w-16 h-16 mb-4"></i>
-                        <p class="font-bold">目前沒有題目，請點擊批量匯入或手動新增</p>
-                    </div>
-                `;
+            if(filtered.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 text-slate-300"><i data-lucide="file-text" class="mx-auto w-16 h-16 mb-4"></i><p>尚無資料</p></div>`;
             } else {
-                container.innerHTML = `
-                    <div class="max-w-4xl mx-auto space-y-6">
-                        <h2 class="text-2xl font-black text-slate-800 mb-4">題庫清單 (${filtered.length})</h2>
-                        <div class="grid gap-4">
-                            ${filtered.map(q => `
-                                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-all group">
-                                    <div class="flex justify-between items-start mb-4">
-                                        <div class="flex gap-2">
-                                            <span class="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-lg uppercase tracking-wider border border-indigo-100">${q.category}</span>
-                                            <span class="px-3 py-1 bg-slate-50 text-slate-500 text-[10px] font-black rounded-lg border">難度：${q.difficulty}</span>
-                                        </div>
-                                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                            <button onclick="editQuestion(${q.id})" class="p-2 hover:text-indigo-600"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                                            <button onclick="deleteQuestion(${q.id})" class="p-2 hover:text-red-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                        </div>
-                                    </div>
-                                    <p class="text-lg font-bold text-slate-800 mb-6 leading-relaxed whitespace-pre-wrap">${q.question}</p>
-                                    <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="text-sm font-black text-indigo-600 flex items-center gap-2">
-                                        <i data-lucide="eye" class="w-4 h-4"></i> 顯示/隱藏解答
-                                    </button>
-                                    <div class="hidden mt-4 p-5 bg-slate-50 rounded-2xl border border-slate-100 animate-in fade-in slide-in-from-top-2">
-                                        <div class="font-black text-emerald-600 mb-1">答案：${q.answer}</div>
-                                        ${q.explanation ? `<div class="text-sm text-slate-500 italic mt-2 pl-4 border-l-2">解析：${q.explanation}</div>` : ''}
-                                    </div>
-                                </div>
-                            `).join('')}
+                container.innerHTML = `<div class="max-w-4xl mx-auto space-y-6"><h2 class="text-2xl font-black">題目清單 (${filtered.length})</h2><div class="grid gap-4">${filtered.map(q => `
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border group">
+                        <div class="flex justify-between mb-2">
+                            <span class="px-2 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded uppercase tracking-wider">${q.category}</span>
+                            <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                <button onclick="editQuestion(${q.id})" class="p-1 hover:text-indigo-600"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                                <button onclick="deleteQuestion(${q.id})" class="p-1 hover:text-red-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
                         </div>
+                        <p class="text-lg font-bold mb-4 whitespace-pre-wrap">${q.question}</p>
+                        <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="text-sm font-black text-indigo-600">查看解答</button>
+                        <div class="hidden mt-4 p-4 bg-slate-50 rounded-xl border font-bold text-emerald-600">答案：${q.answer}${q.explanation ? `<div class="text-slate-500 text-sm font-normal mt-2 border-l-2 pl-4 italic">解析：${q.explanation}</div>`:''}</div>
                     </div>
-                `;
+                `).join('')}</div></div>`;
             }
             lucide.createIcons();
-        }
-
-        // --- 測驗渲染 ---
-        function startQuiz() {
-            if (questions.length === 0) return alert('題庫還沒有題目喔！');
-            quizList = [...questions].sort(() => 0.5 - Math.random()).slice(0, 10);
-            currentQuizIndex = 0;
-            showQuizAns = false;
-            setView('quiz');
         }
 
         function renderQuiz() {
             const container = document.getElementById('content-area');
             const q = quizList[currentQuizIndex];
-            
-            container.innerHTML = `
-                <div class="max-w-2xl mx-auto py-10">
-                    <div class="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100">
-                        <div class="bg-slate-900 p-8 text-white flex justify-between items-center">
-                            <div><p class="font-bold">智慧測驗模式</p></div>
-                            <span class="bg-indigo-600 px-5 py-2 rounded-2xl text-xs font-black">第 ${currentQuizIndex + 1} / ${quizList.length} 題</span>
-                        </div>
-                        <div class="p-12 text-center min-h-[350px] flex flex-col justify-center items-center">
-                            <h2 class="text-2xl font-black mb-12 text-slate-800 leading-tight whitespace-pre-wrap">${q.question}</h2>
-                            ${showQuizAns ? `
-                                <div class="w-full bg-indigo-50 border border-indigo-100 p-8 rounded-[2rem] animate-in zoom-in">
-                                    <p class="text-4xl font-black text-slate-900 mb-4">${q.answer}</p>
-                                    <p class="text-slate-500 text-sm italic">${q.explanation || '無解析'}</p>
-                                </div>
-                            ` : `
-                                <button onclick="showQuizAns=true;renderQuiz()" class="bg-slate-900 text-white px-12 py-5 rounded-full font-black text-lg shadow-2xl hover:bg-indigo-600 transition-all active:scale-95">揭曉答案</button>
-                            `}
-                        </div>
-                        <div class="p-8 bg-slate-50 flex gap-4">
-                            <button onclick="setView('list')" class="flex-1 font-black text-slate-400">結束</button>
-                            <button ${currentQuizIndex === quizList.length - 1 ? 'disabled' : ''} onclick="currentQuizIndex++;showQuizAns=false;renderQuiz()" class="flex-[2] py-4 rounded-2xl font-black shadow-lg bg-indigo-600 text-white disabled:opacity-30">下一題</button>
-                        </div>
-                    </div>
+            container.innerHTML = `<div class="max-w-2xl mx-auto py-10"><div class="bg-white rounded-[2rem] shadow-2xl overflow-hidden border">
+                <div class="bg-slate-900 p-6 text-white flex justify-between"><span>智慧測驗</span><span>${currentQuizIndex+1}/${quizList.length}</span></div>
+                <div class="p-10 text-center min-h-[300px] flex flex-col justify-center items-center">
+                    <h2 class="text-2xl font-black mb-10 leading-relaxed">${q.question}</h2>
+                    ${showQuizAns ? `<div class="w-full bg-emerald-50 p-6 rounded-2xl animate-in zoom-in"><p class="text-3xl font-black text-emerald-600 mb-4">${q.answer}</p><p class="text-slate-500 text-sm">${q.explanation || ''}</p></div>` : 
+                    `<button onclick="showQuizAns=true;renderQuiz()" class="bg-slate-900 text-white px-10 py-4 rounded-full font-black shadow-xl hover:bg-indigo-600 transition-all">揭曉答案</button>`}
                 </div>
-            `;
+                <div class="p-6 bg-slate-50 flex gap-4">
+                    <button onclick="setView('list')" class="flex-1 font-bold text-slate-400">結束</button>
+                    <button ${currentQuizIndex === quizList.length-1 ? 'disabled' : ''} onclick="currentQuizIndex++;showQuizAns=false;renderQuiz()" class="flex-[2] py-4 bg-indigo-600 text-white rounded-xl font-black disabled:opacity-30">下一題</button>
+                </div>
+            </div></div>`;
             lucide.createIcons();
         }
 
-        function render() {
-            if (currentView === 'list') renderList();
-            if (currentView === 'quiz') renderQuiz();
-        }
+        function render() { currentView === 'list' ? renderList() : renderQuiz(); }
 
-        // --- 功能邏輯 ---
-        function toggleEditModal(show) {
-            document.getElementById('edit-modal').style.display = show ? 'flex' : 'none';
-            if (!show) {
-                editingId = null;
-                document.getElementById('modal-title').innerText = '建立題目';
-                ['f-question', 'f-answer', 'f-explanation', 'f-category'].forEach(id => document.getElementById(id).value = '');
-            }
-        }
+        function startQuiz() { if(questions.length===0) return alert('題庫為空'); quizList = [...questions].sort(()=>0.5-Math.random()).slice(0,10); currentQuizIndex=0; showQuizAns=false; setView('quiz'); }
 
-        function toggleImportModal(show) {
-            document.getElementById('import-modal').style.display = show ? 'flex' : 'none';
-        }
+        function toggleEditModal(s) { document.getElementById('edit-modal').style.display = s?'flex':'none'; if(!s) { editingId=null; ['f-question','f-answer','f-explanation','f-category'].forEach(id=>document.getElementById(id).value=''); } }
+        function toggleImportModal(s) { document.getElementById('import-modal').style.display = s?'flex':'none'; }
 
         function saveQuestion() {
-            const data = {
-                id: editingId || Date.now(),
-                question: document.getElementById('f-question').value,
-                answer: document.getElementById('f-answer').value,
-                explanation: document.getElementById('f-explanation').value,
-                category: document.getElementById('f-category').value || '一般',
-                difficulty: document.getElementById('f-difficulty').value,
-                updatedAt: Date.now()
-            };
-
-            if (!data.question || !data.answer) return alert('題目與答案必填');
-
-            if (editingId) {
-                questions = questions.map(q => q.id === editingId ? data : q);
-            } else {
-                questions.push({...data, createdAt: Date.now()});
-            }
-            
-            saveToLocal();
-            toggleEditModal(false);
-            render();
+            const data = { id: editingId||Date.now(), question: document.getElementById('f-question').value, answer: document.getElementById('f-answer').value, explanation: document.getElementById('f-explanation').value, category: document.getElementById('f-category').value||'一般', difficulty: document.getElementById('f-difficulty').value, updatedAt: Date.now() };
+            if(!data.question || !data.answer) return alert('必填！');
+            if(editingId) questions = questions.map(q=>q.id===editingId?data:q);
+            else questions.push({...data, createdAt: Date.now()});
+            saveToLocal(); toggleEditModal(false); render();
         }
 
-        function editQuestion(id) {
-            const q = questions.find(q => q.id === id);
-            editingId = id;
-            document.getElementById('modal-title').innerText = '編輯題目';
-            document.getElementById('f-question').value = q.question;
-            document.getElementById('f-answer').value = q.answer;
-            document.getElementById('f-explanation').value = q.explanation;
-            document.getElementById('f-category').value = q.category;
-            document.getElementById('f-difficulty').value = q.difficulty;
-            toggleEditModal(true);
-        }
-
-        function deleteQuestion(id) {
-            if (confirm('確定刪除？')) {
-                questions = questions.filter(q => q.id !== id);
-                saveToLocal();
-                render();
-            }
-        }
+        function editQuestion(id) { const q = questions.find(q=>q.id===id); editingId=id; document.getElementById('f-question').value=q.question; document.getElementById('f-answer').value=q.answer; document.getElementById('f-explanation').value=q.explanation; document.getElementById('f-category').value=q.category; document.getElementById('f-difficulty').value=q.difficulty; toggleEditModal(true); }
+        function deleteQuestion(id) { if(confirm('刪除？')) { questions=questions.filter(q=>q.id!==id); saveToLocal(); render(); } }
 
         function processBatchImport() {
             const text = document.getElementById('i-text').value;
-            const category = document.getElementById('i-category').value || '未分類';
-            if (!text.trim()) return;
-
-            const lines = text.split('\n').filter(l => l.trim() !== '');
-            let currentQ = null;
-            let addedCount = 0;
-
-            lines.forEach(line => {
-                if (line.match(/^(\d+[\.\、\s]|\(\d+\))/)) {
-                    if (currentQ) { questions.push(currentQ); addedCount++; }
-                    currentQ = {
-                        id: Date.now() + Math.random(),
-                        question: line.replace(/^(\d+[\.\、\s]|\(\d+\))\s*/, '').trim(),
-                        answer: '未設定',
-                        explanation: '',
-                        category: category,
-                        difficulty: '中',
-                        updatedAt: Date.now(),
-                        createdAt: Date.now()
-                    };
-                } else if (line.match(/(答|Ans|答案|解)[：:]/i)) {
-                    if (currentQ) currentQ.answer = line.replace(/.*(答|Ans|答案|解)[：:]/i, '').trim();
-                } else if (line.match(/(解析|說明|Exp)[：:]/i)) {
-                    if (currentQ) currentQ.explanation = line.replace(/.*(解析|說明|Exp)[：:]/i, '').trim();
-                } else if (currentQ) {
-                    currentQ.question += '\n' + line;
+            const cat = document.getElementById('i-category').value || '未分類';
+            const chunks = text.split(/\n\s*\n|\n(?=\d+[\.、\s])/); // 根據題號或空行切分
+            let count = 0;
+            chunks.forEach(chunk => {
+                const lines = chunk.split('\n').map(l=>l.trim()).filter(l=>l);
+                if(lines.length > 1) {
+                    let questionText = "";
+                    let answerText = "";
+                    let expText = "";
+                    lines.forEach(line => {
+                        if(line.match(/^(\d+[\.\、\s])/)) questionText = line.replace(/^\d+[\.\、\s]/, '').trim();
+                        else if(line.match(/^(答|Ans|答案|解)[：:]/i)) answerText = line.replace(/.*[：:]/, '').trim();
+                        else if(line.match(/^(解析|說明|Exp)[：:]/i)) expText = line.replace(/.*[：:]/, '').trim();
+                        else if(!answerText) questionText += " " + line;
+                    });
+                    if(questionText && answerText) {
+                        questions.push({ id: Date.now()+Math.random(), question: questionText, answer: answerText, explanation: expText, category: cat, difficulty: '中', createdAt: Date.now(), updatedAt: Date.now() });
+                        count++;
+                    }
                 }
             });
-            if (currentQ) { questions.push(currentQ); addedCount++; }
-
-            saveToLocal();
-            alert(`成功匯入 ${addedCount} 題！`);
-            toggleImportModal(false);
-            document.getElementById('i-text').value = '';
-            render();
+            saveToLocal(); alert(`匯入 ${count} 題！`); toggleImportModal(false); render();
         }
 
-        function exportData() {
-            const blob = new Blob([JSON.stringify(questions, null, 2)], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `題庫備份_${new Date().toLocaleDateString()}.json`;
-            a.click();
-        }
-
-        function importData(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (Array.isArray(data)) {
-                        if (confirm(`發現 ${data.length} 題，要覆蓋現有題庫嗎？`)) {
-                            questions = data;
-                            saveToLocal();
-                            render();
-                        }
-                    }
-                } catch (err) { alert('檔案格式不正確'); }
-            };
-            reader.readAsText(file);
-        }
-
-        // 初始化
-        window.onload = () => {
-            lucide.createIcons();
-            render();
-        };
+        function exportData() { const b=new Blob([JSON.stringify(questions,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=`題庫_${new Date().toLocaleDateString()}.json`; a.click(); }
+        function importData(e) { const r=new FileReader(); r.onload=(e)=>{ const d=JSON.parse(e.target.result); if(confirm(`匯入 ${d.length} 題？`)) { questions=d; saveToLocal(); render(); } }; r.readAsText(e.target.files[0]); }
+        window.onload = () => { lucide.createIcons(); render(); };
     </script>
 </body>
 </html>
