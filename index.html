@@ -14,6 +14,7 @@
         /* 隱藏捲軸但保持功能 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .transition-all { transition: all 0.3s ease; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
@@ -81,14 +82,14 @@
                     <h3 class="text-2xl font-black text-slate-800">AI 批量解析匯入</h3>
                     <p class="text-slate-400 text-sm">支援貼上文字或直接上傳 PDF 解析</p>
                 </div>
-                <button onclick="toggleImportModal(false)" class="p-3 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
+                <button onclick="toggleImportModal(false)" class="p-3 hover:bg-slate-100 rounded-full transition-colors"><i data-lucide="x"></i></button>
             </div>
             <div class="p-8 space-y-6 overflow-y-auto no-scrollbar">
                 <!-- PDF 上傳區 -->
                 <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 transition-all cursor-pointer relative" onclick="document.getElementById('pdf-upload').click()">
                     <i data-lucide="file-up" class="w-10 h-10 text-indigo-500 mb-2"></i>
                     <p class="text-sm font-bold text-slate-600" id="pdf-status">點擊上傳 PDF 檔案自動讀取文字</p>
-                    <p class="text-[10px] text-slate-400 mt-1">讀取後的文字會自動填入下方方塊</p>
+                    <p class="text-[10px] text-slate-400 mt-1">系統會自動嘗試從 PDF 中提取題目內容</p>
                     <input type="file" id="pdf-upload" class="hidden" accept="application/pdf" onchange="handlePdfFile(event)">
                 </div>
 
@@ -99,7 +100,7 @@
                 
                 <div>
                     <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-2">題目內容 (可手動調整)</label>
-                    <textarea id="i-text" rows="8" class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 outline-none focus:border-emerald-500 text-sm font-medium leading-relaxed" placeholder="1. 題目...&#10;答：答案..."></textarea>
+                    <textarea id="i-text" rows="8" class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 outline-none focus:border-emerald-500 text-sm font-medium leading-relaxed" placeholder="1. 題目內容...&#10;答：答案..."></textarea>
                 </div>
                 
                 <button onclick="processBatchImport()" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xl hover:bg-emerald-700 shadow-xl transition-all active:scale-95">
@@ -156,7 +157,8 @@
 
             try {
                 const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                const pdf = await loadingTask.promise;
                 let fullText = "";
 
                 for (let i = 1; i <= pdf.numPages; i++) {
@@ -262,7 +264,8 @@
         function processBatchImport() {
             const text = document.getElementById('i-text').value;
             const cat = document.getElementById('i-category').value || '未分類匯入';
-            // 改進的正則表達式，處理 PDF 讀取後可能的不規則空格
+            // 改進的正則表達式：處理 PDF 讀取後可能的不規則格式
+            // 偵測數字開頭，或者題目開頭
             const chunks = text.split(/\n\s*\n|\n\s*(?=\d+[\.、\s])/); 
             let count = 0;
             
@@ -274,7 +277,7 @@
                     let expText = "";
                     
                     lines.forEach(line => {
-                        // 匹配題號
+                        // 匹配題號與題目
                         if(line.match(/^(\d+[\.\、\s])/)) {
                             questionText = line.replace(/^\d+[\.\、\s]/, '').trim();
                         } 
@@ -286,7 +289,7 @@
                         else if(line.match(/^(解析|說明|Exp)[：:]/i)) {
                             expText = line.replace(/.*[：:]/, '').trim();
                         } 
-                        // 其他可能是題目的剩餘部分或選項
+                        // 可能是題目剩餘文字或選項
                         else if(!answerText) {
                             questionText += (questionText ? "\n" : "") + line;
                         }
@@ -309,7 +312,7 @@
             });
             
             saveToLocal(); 
-            alert(`匯入成功！共解析並新增 ${count} 題。`); 
+            alert(`匯入完成！共解析並新增 ${count} 題。`); 
             toggleImportModal(false); 
             document.getElementById('i-text').value = '';
             render();
